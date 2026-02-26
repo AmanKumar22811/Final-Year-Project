@@ -17,10 +17,11 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 
 # ---------------- APP ----------------
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins="http://localhost:5173", supports_credentials=True)
 
 # ---------------- DATABASE ----------------
-client = MongoClient(MONGO_URI)
+client = MongoClient(MONGO_URI, tlsAllowInvalidCertificates=True)
+print("Mongo URI:", MONGO_URI)
 db = client["bloodgroupdb"]
 users_collection = db["users"]
 
@@ -45,103 +46,115 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 CONFIDENCE_THRESHOLD = 40.0
 
 
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "status": "Backend is running",
+        "message": "Blood Group Detection API is working",
+        "available_routes": [
+            "/api/signup",
+            "/api/login",
+            "/api/predict"
+        ]
+    }), 200
+
 # ================= AUTH ROUTES =================
 
-@app.route("/api/signup", methods=["POST"])
+@app.route("/signup", methods=["POST"])
 def signup():
-    data = request.json
+    try:
+        data = request.get_json()
 
-    full_name = data.get("fullName")
-    email = data.get("email")
-    username = data.get("username")
-    password = data.get("password")
+        if not data:
+            return jsonify({"message": "No data received"}), 400
 
-    if users_collection.find_one({"email": email}):
-        return jsonify({"error": "Email already exists"}), 400
+        full_name = data.get("fullName")
+        email = data.get("email")
+        username = data.get("username")
+        password = data.get("password")
 
-    hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+        if not full_name or not email or not username or not password:
+            return jsonify({"message": "All fields are required"}), 400
 
-    users_collection.insert_one({
-        "fullName": full_name,
-        "email": email,
-        "username": username,
-        "password": hashed_password
-    })
+        if users_collection.find_one({"email": email}):
+            return jsonify({"message": "Email already exists"}), 400
 
-    return jsonify({"message": "User registered successfully"}), 201
+        hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+
+        users_collection.insert_one({
+            "fullName": full_name,
+            "email": email,
+            "username": username,
+            "password": hashed_password
+        })
+
+        return jsonify({"message": "User registered successfully"}), 201
+
+    except Exception as e:
+        print("Signup Error:", str(e))
+        return jsonify({"message": str(e)}), 500
 
 
-@app.route("/api/login", methods=["POST"])
+@app.route("/login", methods=["POST"])
 def login():
-    data = request.json
+    try:
+        data = request.get_json()
 
-    email = data.get("email")
-    password = data.get("password")
+        if not data:
+            return jsonify({"message": "No data received"}), 400
 
-    user = users_collection.find_one({"email": email})
+        email = data.get("email")
+        password = data.get("password")
 
-    if not user:
-        return jsonify({"error": "Invalid email or password"}), 401
+        if not email or not password:
+            return jsonify({"message": "Email and password are required"}), 400
 
-    if not bcrypt.checkpw(password.encode("utf-8"), user["password"]):
-        return jsonify({"error": "Invalid email or password"}), 401
+        user = users_collection.find_one({"email": email})
 
-    return jsonify({
-        "message": "Login successful",
-        "username": user["username"]
-    }), 200
+        if not user:
+            return jsonify({"message": "Invalid email or password"}), 401
+
+        if not bcrypt.checkpw(password.encode("utf-8"), user["password"]):
+            return jsonify({"message": "Invalid email or password"}), 401
+
+        return jsonify({
+            "message": "Login successful",
+            "username": user["username"]
+        }), 200
+
+    except Exception as e:
+        print("Login Error:", str(e))
+        return jsonify({"message": "Server error"}), 500
 
 
 # ================= PREDICTION ROUTE =================
-
-from flask import request, jsonify
-import numpy as np
-import os
-from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.imagenet_utils import preprocess_input
 
-@app.route("/api/predict", methods=["POST"])
+@app.route("/predict", methods=["POST"])
 def predict():
 
-    # 1️⃣ Check file key matches frontend
     if "fingerprint" not in request.files:
         return jsonify({"message": "No fingerprint uploaded"}), 400
 
     file = request.files["fingerprint"]
 
-    if file.filename == "":
-        return jsonify({"message": "No selected file"}), 400
-
     try:
-        # 2️⃣ Save file temporarily
         filepath = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(filepath)
 
-        # 3️⃣ Load & preprocess image
         img = image.load_img(filepath, target_size=(256, 256))
         x = image.img_to_array(img)
 
-        # IMPORTANT: normalize properly
-        x = x / 255.0   # safer than preprocess_input unless using specific pretrained model
-
         x = np.expand_dims(x, axis=0)
+        x = preprocess_input(x)
 
-        # 4️⃣ Predict
-        preds = model.predict(x)
+        preds = model.predict(x, verbose=0)
+
+        print("Predictions:", preds[0])
 
         class_index = int(np.argmax(preds[0]))
         confidence = float(np.max(preds[0])) * 100
 
-        print("Raw predictions:", preds)
-
-        # 5️⃣ Confidence threshold check
-        if confidence < CONFIDENCE_THRESHOLD:
-            return jsonify({
-                "prediction": "Uncertain",
-                "confidence": round(confidence, 2)
-            }), 200
-
-        # 6️⃣ Return correct label
         return jsonify({
             "prediction": LABELS[class_index],
             "confidence": round(confidence, 2)

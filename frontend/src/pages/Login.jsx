@@ -42,7 +42,7 @@ const Login = () => {
 
     if (Object.keys(newErrors).length === 0) {
       try {
-        const response = await fetch("http://localhost:5000/api/login", {
+        const response = await fetch("http://localhost:5000/login", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -58,9 +58,9 @@ const Login = () => {
 
 
           // Redirect to upload page
-          window.location.href = "/upload";
+          // window.location.href = "/upload";
         } else {
-          alert(data.message);
+          alert(data.message || "Login Failed");
         }
       } catch (error) {
         console.error("Error:", error);

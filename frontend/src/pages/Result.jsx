@@ -7,7 +7,7 @@ const Result = () => {
   const data = location.state || {};
 
   // Placeholder result - replace with actual detection logic later
-  const bloodGroup = data.bloodGroup || 'A+';
+  const bloodGroup = data.prediction || 'A+';
   const confidence = data.confidence || '98%';
 
   return (

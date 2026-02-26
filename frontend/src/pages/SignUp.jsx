@@ -66,7 +66,7 @@ const SignUp = () => {
 
     if (Object.keys(newErrors).length === 0) {
       try {
-        const response = await fetch("http://localhost:5000/api/signup", {
+        const response = await fetch("http://localhost:5000/signup", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -87,7 +87,7 @@ const SignUp = () => {
           // optional: auto redirect to login
           window.location.href = "/login";
         } else {
-          alert(data.message);
+          alert(data.message || "Signup failed");
         }
       } catch (error) {
         console.error("Error:", error);
