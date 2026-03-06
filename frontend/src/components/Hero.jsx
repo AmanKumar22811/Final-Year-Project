@@ -1,7 +1,8 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Hero = () => {
+   const navigate = useNavigate();
   return (
     <section className="flex flex-col items-center justify-center min-h-screen px-4 md:px-6 pt-32 md:pt-24 pb-12">
       {/* Main Heading */}
@@ -26,12 +27,20 @@ const Hero = () => {
           </svg>
           Upload Fingerprint
         </Link>
-        <Link
-          to="/signup"
-          className="border-2 border-teal-500 hover:bg-teal-50 text-teal-600 px-8 py-3 rounded-lg font-medium transition-colors inline-flex items-center justify-center"
+        <button
+          onClick={() => {
+            const token = localStorage.getItem("token");
+
+            if (token) {
+              navigate("/upload");
+            } else {
+              navigate("/signup");
+            }
+          }}
+          className="border-2 border-teal-500 hover:bg-teal-50 text-teal-600 px-8 py-3 rounded-lg font-medium transition-colors inline-flex items-center justify-center cursor-pointer"
         >
           Get Started
-        </Link>
+        </button>
 
       </div>
     </section>

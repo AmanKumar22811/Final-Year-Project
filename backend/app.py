@@ -1,9 +1,13 @@
 import os
 import bcrypt
+import jwt
+import datetime
 import numpy as np
+from functools import wraps
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
+from bson.objectid import ObjectId
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.efficientnet import preprocess_input
@@ -21,7 +25,6 @@ CORS(app, origins="http://localhost:5173", supports_credentials=True)
 
 # ---------------- DATABASE ----------------
 client = MongoClient(MONGO_URI, tlsAllowInvalidCertificates=True)
-print("Mongo URI:", MONGO_URI)
 db = client["bloodgroupdb"]
 users_collection = db["users"]
 
@@ -43,24 +46,57 @@ LABELS = {
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-CONFIDENCE_THRESHOLD = 40.0
+# =====================================================
+#               AUTH MIDDLEWARE
+# =====================================================
 
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+
+        token = None
+
+        if "Authorization" in request.headers:
+            token = request.headers["Authorization"]
+
+        if not token:
+            return jsonify({"message": "Token missing"}), 401
+
+        try:
+            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            current_user = users_collection.find_one(
+                {"_id": ObjectId(data["user_id"])}
+            )
+        except Exception as e:
+            return jsonify({"message": "Invalid or expired token"}), 401
+
+        return f(current_user, *args, **kwargs)
+
+    return decorated
+
+
+# =====================================================
+#               HOME ROUTE
+# =====================================================
 
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({
         "status": "Backend is running",
         "message": "Blood Group Detection API is working",
-        "available_routes": [
+        "routes": [
             "/api/signup",
             "/api/login",
-            "/api/predict"
+            "/api/predict (protected)"
         ]
-    }), 200
+    })
 
-# ================= AUTH ROUTES =================
 
-@app.route("/signup", methods=["POST"])
+# =====================================================
+#                       SIGNUP
+# =====================================================
+
+@app.route("/api/signup", methods=["POST"])
 def signup():
     try:
         data = request.get_json()
@@ -74,7 +110,7 @@ def signup():
         password = data.get("password")
 
         if not full_name or not email or not username or not password:
-            return jsonify({"message": "All fields are required"}), 400
+            return jsonify({"message": "All fields required"}), 400
 
         if users_collection.find_one({"email": email}):
             return jsonify({"message": "Email already exists"}), 400
@@ -95,7 +131,11 @@ def signup():
         return jsonify({"message": str(e)}), 500
 
 
-@app.route("/login", methods=["POST"])
+# =====================================================
+#                   LOGIN
+# =====================================================
+
+@app.route("/api/login", methods=["POST"])
 def login():
     try:
         data = request.get_json()
@@ -107,7 +147,7 @@ def login():
         password = data.get("password")
 
         if not email or not password:
-            return jsonify({"message": "Email and password are required"}), 400
+            return jsonify({"message": "Email and password required"}), 400
 
         user = users_collection.find_one({"email": email})
 
@@ -117,8 +157,15 @@ def login():
         if not bcrypt.checkpw(password.encode("utf-8"), user["password"]):
             return jsonify({"message": "Invalid email or password"}), 401
 
+        token = jwt.encode({
+            "user_id": str(user["_id"]),
+            "email": user["email"],
+            "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+        }, SECRET_KEY, algorithm="HS256")
+
         return jsonify({
             "message": "Login successful",
+            "token": token,
             "username": user["username"]
         }), 200
 
@@ -127,11 +174,13 @@ def login():
         return jsonify({"message": "Server error"}), 500
 
 
-# ================= PREDICTION ROUTE =================
-from tensorflow.keras.applications.imagenet_utils import preprocess_input
+# =====================================================
+#           PREDICT (PROTECTED)
+# =====================================================
 
-@app.route("/predict", methods=["POST"])
-def predict():
+@app.route("/api/predict", methods=["POST"])
+@token_required
+def predict(current_user):
 
     if "fingerprint" not in request.files:
         return jsonify({"message": "No fingerprint uploaded"}), 400
@@ -150,21 +199,37 @@ def predict():
 
         preds = model.predict(x, verbose=0)
 
-        print("Predictions:", preds[0])
-
         class_index = int(np.argmax(preds[0]))
         confidence = float(np.max(preds[0])) * 100
 
         return jsonify({
             "prediction": LABELS[class_index],
-            "confidence": round(confidence, 2)
-        }), 200
+            "confidence": round(confidence, 2),
+            "user": current_user["username"]
+        })
 
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
 
-# ================= RUN =================
+# =====================================================
+#           PROFILE (CHECK LOGIN)
+# =====================================================
+
+@app.route("/api/profile", methods=["GET"])
+@token_required
+def profile(current_user):
+
+    return jsonify({
+        "username": current_user["username"],
+        "email": current_user["email"],
+        "fullName": current_user["fullName"]
+    })
+
+
+# =====================================================
+#                   RUN SERVER
+# =====================================================
 
 if __name__ == "__main__":
     app.run(debug=True)

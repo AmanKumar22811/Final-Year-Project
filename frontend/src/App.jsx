@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import UploadFingerprint from './pages/UploadFingerprint';
 import Result from './pages/Result';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
       <Route path="/signup" element={<SignUp />} />
       <Route path="/upload" element={<UploadFingerprint />} />
       <Route path="/result" element={<Result />} />
+      <Route path="/profile" element={<Profile />} />
     </Routes>
   );
 }
