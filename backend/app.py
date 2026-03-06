@@ -10,7 +10,7 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
-from tensorflow.keras.applications.efficientnet import preprocess_input
+from tensorflow.keras.applications.imagenet_utils import preprocess_input
 from dotenv import load_dotenv
 
 # ---------------- LOAD ENV ----------------
@@ -27,6 +27,7 @@ CORS(app, origins="http://localhost:5173", supports_credentials=True)
 client = MongoClient(MONGO_URI, tlsAllowInvalidCertificates=True)
 db = client["bloodgroupdb"]
 users_collection = db["users"]
+predictions_collection = db["predictions"]
 
 # ---------------- MODEL ----------------
 MODEL_PATH = "model_blood_group_detection.h5"
@@ -202,14 +203,49 @@ def predict(current_user):
         class_index = int(np.argmax(preds[0]))
         confidence = float(np.max(preds[0])) * 100
 
+        prediction_result = LABELS[class_index]
+
+        # ==========================
+        # SAVE HISTORY IN DATABASE
+        # ==========================
+
+        predictions_collection.insert_one({
+            "user_id": str(current_user["_id"]),
+            "username": current_user["username"],
+            "prediction": prediction_result,
+            "confidence": round(confidence, 2),
+            "fingerprint_image": file.filename,
+            "created_at": datetime.datetime.utcnow()
+        })
+
         return jsonify({
-            "prediction": LABELS[class_index],
+            "prediction": prediction_result,
             "confidence": round(confidence, 2),
             "user": current_user["username"]
         })
 
     except Exception as e:
         return jsonify({"message": str(e)}), 500
+
+
+# =====================================================
+#               USER PREDICTION HISTORY
+# =====================================================
+
+@app.route("/api/history", methods=["GET"])
+@token_required
+def history(current_user):
+
+    history = list(
+        predictions_collection.find(
+            {"user_id": str(current_user["_id"])}
+        ).sort("created_at", -1)
+    )
+
+    for item in history:
+        item["_id"] = str(item["_id"])
+
+    return jsonify(history)
 
 
 # =====================================================

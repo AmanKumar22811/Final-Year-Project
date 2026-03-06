@@ -53,11 +53,15 @@ const UploadFingerprint = () => {
         formDataToSend.append("phone", formData.phone);
         formDataToSend.append("fingerprint", fingerprintFile);
 
+        const token = localStorage.getItem("token");
+
         const response = await fetch(
-          "http://localhost:5000/predict",
+          "http://localhost:5000/api/predict",
           {
             method: "POST",
-
+            headers: {
+              Authorization: token,
+            },
             body: formDataToSend,
           }
         );
