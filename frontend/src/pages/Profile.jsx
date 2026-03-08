@@ -5,6 +5,7 @@ const Profile = () => {
 
   const [user, setUser] = useState({});
   const [history, setHistory] = useState([]);
+  const [openCard, setOpenCard] = useState(null);
 
   useEffect(() => {
 
@@ -54,7 +55,7 @@ const Profile = () => {
 
       <Header />
 
-      <div className="max-w-4xl mx-auto px-4 pt-32">
+      <div className="max-w-4xl mx-auto px-4 pt-32 pb-16">
 
         {/* Profile Card */}
         <div className="bg-white rounded-lg shadow-lg p-8 text-center mb-10">
@@ -101,39 +102,105 @@ const Profile = () => {
               No predictions yet.
             </p>
           ) : (
+
             <div className="space-y-4">
 
-              {history.map((item) => (
+              {history.map((item, index) => {
 
-                <div
-                  key={item._id}
-                  className="border border-gray-200 rounded-lg p-4 flex justify-between items-center"
-                >
+                const isOpen = openCard === index;
 
-                  <div>
-                    <p className="font-semibold text-gray-800">
-                      {item.prediction}
-                    </p>
+                return (
 
-                    <p className="text-sm text-gray-500">
-                      {new Date(item.created_at).toLocaleString()}
-                    </p>
+                  <div
+                    key={item._id}
+                    className="border border-gray-200 rounded-lg shadow-sm cursor-pointer"
+                    onClick={() => setOpenCard(isOpen ? null : index)}
+                  >
+
+                    {/* Collapsed View */}
+                    <div className="p-4 flex justify-between items-center">
+
+                      <div>
+                        <p className="font-semibold text-gray-800">
+                          Blood Group: {item.prediction}
+                        </p>
+
+                        <p className="text-sm text-gray-500">
+                          {new Date(item.created_at).toLocaleString()}
+                        </p>
+                      </div>
+
+                      <div className="text-right">
+
+                        <p className="text-teal-600 font-bold">
+                          {item.confidence}%
+                        </p>
+
+                        <p className="text-xs text-gray-500">
+                          Confidence
+                        </p>
+
+                      </div>
+
+                    </div>
+
+                    {/* Expanded Details */}
+                    {isOpen && (
+
+                      <div className="border-t p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+
+                        <p>
+                          <strong>Full Name:</strong> {item.fullName}
+                        </p>
+
+                        <p>
+                          <strong>Email:</strong> {item.email}
+                        </p>
+
+                        <p>
+                          <strong>Date of Birth:</strong> {item.dateOfBirth}
+                        </p>
+
+                        <p>
+                          <strong>Phone:</strong> {item.phone}
+                        </p>
+
+                        <p>
+                          <strong>Prediction:</strong> {item.prediction}
+                        </p>
+
+                        <p>
+                          <strong>Confidence:</strong> {item.confidence}%
+                        </p>
+
+                        {item.fingerprint_image && (
+                          <div className="md:col-span-2">
+
+                            <p className="mb-2 font-semibold">
+                              Fingerprint Image
+                            </p>
+
+                            <img
+                              src={`http://localhost:5000/uploads/${item.fingerprint_image}`}
+                              alt="Fingerprint"
+                              className="w-32 rounded border"
+                            />
+
+                          </div>
+                        )}
+
+                      </div>
+
+                    )}
+
                   </div>
 
-                  <div className="text-right">
-                    <p className="text-teal-600 font-bold">
-                      {item.confidence}%
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Confidence
-                    </p>
-                  </div>
+                );
 
-                </div>
-
-              ))}
+              })}
 
             </div>
+
           )}
 
         </div>

@@ -4,7 +4,7 @@ import jwt
 import datetime
 import numpy as np
 from functools import wraps
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from pymongo import MongoClient
 from bson.objectid import ObjectId
@@ -188,7 +188,14 @@ def predict(current_user):
 
     file = request.files["fingerprint"]
 
+    # GET FORM DATA
+    full_name = request.form.get("fullName")
+    email = request.form.get("email")
+    dob = request.form.get("dateOfBirth")
+    phone = request.form.get("phone")
+
     try:
+
         filepath = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(filepath)
 
@@ -205,23 +212,27 @@ def predict(current_user):
 
         prediction_result = LABELS[class_index]
 
-        # ==========================
-        # SAVE HISTORY IN DATABASE
-        # ==========================
-
+        # SAVE HISTORY
         predictions_collection.insert_one({
+
             "user_id": str(current_user["_id"]),
             "username": current_user["username"],
+
+            "fullName": full_name,
+            "email": email,
+            "dateOfBirth": dob,
+            "phone": phone,
+
             "prediction": prediction_result,
             "confidence": round(confidence, 2),
+
             "fingerprint_image": file.filename,
             "created_at": datetime.datetime.utcnow()
         })
 
         return jsonify({
             "prediction": prediction_result,
-            "confidence": round(confidence, 2),
-            "user": current_user["username"]
+            "confidence": round(confidence, 2)
         })
 
     except Exception as e:
@@ -261,6 +272,15 @@ def profile(current_user):
         "email": current_user["email"],
         "fullName": current_user["fullName"]
     })
+
+
+# =====================================================
+#                   SEND IMAGE
+# =====================================================
+
+@app.route("/uploads/<filename>")
+def uploaded_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 
 # =====================================================
