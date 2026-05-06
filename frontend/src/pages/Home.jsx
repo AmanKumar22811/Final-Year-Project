@@ -22,7 +22,6 @@ const Home = () => {
   return (
     <div className="relative min-h-screen overflow-hidden">
 
-      {/* Background with wave patterns */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
 
         <div className="absolute bottom-0 right-0 w-[90%] max-w-2xl lg:max-w-3xl ml-auto opacity-80">
@@ -63,7 +62,6 @@ const Home = () => {
       <div className="relative z-10">
         <Header />
         <Hero />
-        {/* <Footer /> */}
       </div>
     </div>
   );

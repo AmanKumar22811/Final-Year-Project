@@ -57,7 +57,6 @@ const Profile = () => {
 
       <div className="max-w-4xl mx-auto px-4 pt-32 pb-16">
 
-        {/* Profile Card */}
         <div className="bg-white rounded-lg shadow-lg p-8 text-center mb-10">
 
           <div className="w-24 h-24 mx-auto bg-teal-500 rounded-full flex items-center justify-center text-white text-3xl font-bold mb-4">
@@ -90,7 +89,6 @@ const Profile = () => {
 
         </div>
 
-        {/* Prediction History */}
         <div className="bg-white rounded-lg shadow-lg p-8">
 
           <h2 className="text-xl font-bold text-gray-800 mb-6">
@@ -117,7 +115,6 @@ const Profile = () => {
                     onClick={() => setOpenCard(isOpen ? null : index)}
                   >
 
-                    {/* Collapsed View */}
                     <div className="p-4 flex justify-between items-center">
 
                       <div>
@@ -144,7 +141,6 @@ const Profile = () => {
 
                     </div>
 
-                    {/* Expanded Details */}
                     {isOpen && (
 
                       <div className="border-t p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">

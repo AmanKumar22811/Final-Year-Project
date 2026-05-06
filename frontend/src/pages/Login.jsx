@@ -83,13 +83,11 @@ const Login = () => {
 
         if (response.ok) {
 
-          // Store JWT token
           localStorage.setItem("token", data.token);
           localStorage.setItem("username", data.username);
           
           alert("Login successful!");
 
-          // redirect to home
           navigate("/");
 
         } else {
@@ -116,7 +114,6 @@ const Login = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
 
-            {/* EMAIL */}
             <div>
               <label className="block text-sm font-medium text-gray-800 mb-1">
                 Email
@@ -142,7 +139,6 @@ const Login = () => {
               )}
             </div>
 
-            {/* PASSWORD */}
             <div>
               <label className="block text-sm font-medium text-gray-800 mb-1">
                 Password
@@ -168,7 +164,6 @@ const Login = () => {
               )}
             </div>
 
-            {/* BUTTON */}
             <button
               type="submit"
               className="w-full bg-green-500 hover:bg-green-600 text-white font-medium py-3 rounded-md transition-colors"

@@ -13,23 +13,22 @@ from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.imagenet_utils import preprocess_input
 from dotenv import load_dotenv
 
-# ---------------- LOAD ENV ----------------
+
 load_dotenv()
 
 MONGO_URI = os.getenv("MONGO_URI")
 SECRET_KEY = os.getenv("SECRET_KEY")
 
-# ---------------- APP ----------------
+
 app = Flask(__name__)
 CORS(app, origins="http://localhost:5173", supports_credentials=True)
 
-# ---------------- DATABASE ----------------
 client = MongoClient(MONGO_URI, tlsAllowInvalidCertificates=True)
 db = client["bloodgroupdb"]
 users_collection = db["users"]
 predictions_collection = db["predictions"]
 
-# ---------------- MODEL ----------------
+
 MODEL_PATH = "model_blood_group_detection.h5"
 model = load_model(MODEL_PATH)
 
@@ -47,9 +46,7 @@ LABELS = {
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# =====================================================
-#               AUTH MIDDLEWARE
-# =====================================================
+
 
 def token_required(f):
     @wraps(f)
@@ -76,9 +73,7 @@ def token_required(f):
     return decorated
 
 
-# =====================================================
-#               HOME ROUTE
-# =====================================================
+
 
 @app.route("/", methods=["GET"])
 def home():
@@ -93,9 +88,7 @@ def home():
     })
 
 
-# =====================================================
-#                       SIGNUP
-# =====================================================
+
 
 @app.route("/api/signup", methods=["POST"])
 def signup():
@@ -132,9 +125,7 @@ def signup():
         return jsonify({"message": str(e)}), 500
 
 
-# =====================================================
-#                   LOGIN
-# =====================================================
+
 
 @app.route("/api/login", methods=["POST"])
 def login():
@@ -175,9 +166,7 @@ def login():
         return jsonify({"message": "Server error"}), 500
 
 
-# =====================================================
-#           PREDICT (PROTECTED)
-# =====================================================
+
 
 @app.route("/api/predict", methods=["POST"])
 @token_required
@@ -239,9 +228,7 @@ def predict(current_user):
         return jsonify({"message": str(e)}), 500
 
 
-# =====================================================
-#               USER PREDICTION HISTORY
-# =====================================================
+
 
 @app.route("/api/history", methods=["GET"])
 @token_required
@@ -259,9 +246,7 @@ def history(current_user):
     return jsonify(history)
 
 
-# =====================================================
-#           PROFILE (CHECK LOGIN)
-# =====================================================
+
 
 @app.route("/api/profile", methods=["GET"])
 @token_required
@@ -274,18 +259,14 @@ def profile(current_user):
     })
 
 
-# =====================================================
-#                   SEND IMAGE
-# =====================================================
+
 
 @app.route("/uploads/<filename>")
 def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
 
-# =====================================================
-#                   RUN SERVER
-# =====================================================
+
 
 if __name__ == "__main__":
     app.run(debug=True)
